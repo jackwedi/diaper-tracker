@@ -11,6 +11,14 @@ export function supabase(): SupabaseClient {
   if (!url || !key) {
     throw new Error("SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY doivent être définis.");
   }
-  client = createClient(url, key, { auth: { persistSession: false } });
+  // Ne garde que "https://xxxx.supabase.co" : une URL copiée avec "/rest/v1/"
+  // donnerait "Invalid path specified in request URL".
+  let origin: string;
+  try {
+    origin = new URL(url.trim()).origin;
+  } catch {
+    throw new Error(`SUPABASE_URL invalide : attendu https://xxxx.supabase.co`);
+  }
+  client = createClient(origin, key.trim(), { auth: { persistSession: false } });
   return client;
 }
