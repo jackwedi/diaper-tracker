@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchLatest, fetchRange,
-  logout, startFeeding, stopFeeding, updateDiaperTime, updateFeeding, type Result,
+  logout, startFeeding, stopFeeding, updateDiaperTime, updateFeeding,
 } from "@/app/actions";
+import { unwrap } from "@/lib/unwrap";
+import WeeklyData from "@/components/WeeklyData";
 import type { Diaper, Feeding } from "@/lib/types";
 import {
   addMonths, dayKey, formatClock, formatDuration, formatTime, gridDays, gridStart,
@@ -15,12 +17,6 @@ type Side = "G" | "D" | null;
 const LEVELS = { 1: "Faible", 2: "Moyen", 3: "Abondant" } as const;
 const SIDES = { G: "Gauche", D: "Droit" } as const;
 const POLL_MS = 30_000;
-
-async function unwrap<T>(p: Promise<Result<T>>): Promise<T> {
-  const r = await p;
-  if (!r.ok) throw new Error(r.error);
-  return r.data;
-}
 
 const isFailure = (r: unknown): r is { ok: false; error: string } =>
   typeof r === "object" && r !== null && "ok" in r && r.ok === false;
@@ -46,6 +42,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   const [editing, setEditing] = useState<Editing>(null);
   const [pending, startTransition] = useTransition();
+  const [tab, setTab] = useState<"track" | "data">("track");
 
   // ----- Chargement -----
   const load = useCallback(async () => {
@@ -143,9 +140,15 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
     <>
       <header className="topbar">
         <h1>👶 Suivi bébé</h1>
+        <nav className="tabs" role="tablist">
+          <button role="tab" aria-selected={tab === "track"} className={tab === "track" ? "on" : ""}
+            onClick={() => setTab("track")}>Suivi</button>
+          <button role="tab" aria-selected={tab === "data"} className={tab === "data" ? "on" : ""}
+            onClick={() => setTab("data")}>Données</button>
+        </nav>
         <div className="topbar-actions">
           {pending && <span className="sync">…</span>}
-          <button className="ghost small" onClick={() => run(load)}>Rafraîchir</button>
+          {tab === "track" && <button className="ghost small" onClick={() => run(load)}>Rafraîchir</button>}
           {canLogout && <button className="ghost small" onClick={() => logout()}>Déconnexion</button>}
         </div>
       </header>
@@ -158,6 +161,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
           </div>
         )}
 
+        {tab === "data" ? <WeeklyData onError={setError} /> : (<>
         {/* ===== RÉCAP ===== */}
         <section className="card recap">
           <div className="recap-head">
@@ -269,6 +273,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
             onManual={(input) => run(() => addFeedingManual(input))}
           />
         </div>
+        </>)}
       </main>
 
       {editing && (
