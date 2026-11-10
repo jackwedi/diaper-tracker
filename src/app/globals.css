@@ -13,8 +13,8 @@
   --pee-soft: #f6ecd6;
   --poo: #8b6446;           /* noisette */
   --poo-soft: #eee2d4;
-  --feed: #6c8366;          /* sauge */
-  --feed-soft: #e5ebdf;
+  --feed: #a35d70;          /* vieux rose */
+  --feed-soft: #f6e3e5;
   --radius: 18px;
   --shadow: 0 1px 2px rgba(80, 60, 40, .05), 0 6px 20px rgba(80, 60, 40, .06);
   --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -35,8 +35,8 @@
     --pee-soft: #3a301c;
     --poo: #c39672;
     --poo-soft: #362a20;
-    --feed: #9fb59a;
-    --feed-soft: #26302a;
+    --feed: #e2a5b2;
+    --feed-soft: #36242a;
     --shadow: none;
   }
 }
