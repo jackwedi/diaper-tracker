@@ -14,3 +14,8 @@ export type Feeding = {
   duration_seconds: number | null;
   side: "G" | "D" | null;
 };
+
+export type Baby = {
+  name: string | null;
+  born_at: string | null;
+};

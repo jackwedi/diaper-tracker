@@ -75,3 +75,37 @@ export function timeAgo(iso: string, now: number): string {
   const days = Math.floor(h / 24);
   return `il y a ${days} j`;
 }
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
+
+/** Âge du bébé : libellé principal + détail. */
+export function formatAge(bornIso: string, now: number): { main: string; detail: string } {
+  const born = new Date(bornIso);
+  const ms = now - born.getTime();
+  if (ms < 0) return { main: "Pas encore né", detail: "" };
+  const hours = Math.floor(ms / 3_600_000);
+  const days = Math.floor(ms / 86_400_000);
+  if (days < 1) return { main: plural(hours, "heure"), detail: "" };
+
+  // Mois calendaires révolus + jours restants
+  const n = new Date(now);
+  let months = (n.getFullYear() - born.getFullYear()) * 12 + (n.getMonth() - born.getMonth());
+  const anniversary = (m: number) => new Date(born.getFullYear(), born.getMonth() + m, born.getDate(), born.getHours(), born.getMinutes());
+  if (anniversary(months).getTime() > now) months--;
+  const daysAfterMonths = Math.floor((now - anniversary(months).getTime()) / 86_400_000);
+
+  const weeks = Math.floor(days / 7);
+  const weekDetail = weeks
+    ? `${plural(weeks, "semaine")}${days % 7 ? ` et ${plural(days % 7, "jour")}` : ""}`
+    : "";
+
+  if (months < 2) return { main: plural(days, "jour"), detail: weekDetail };
+  if (months < 24) {
+    return {
+      main: `${months} mois${daysAfterMonths ? ` et ${plural(daysAfterMonths, "jour")}` : ""}`,
+      detail: `${plural(days, "jour")} · ${plural(weeks, "semaine")}`,
+    };
+  }
+  const years = Math.floor(months / 12);
+  return { main: `${plural(years, "an")}${months % 12 ? ` et ${months % 12} mois` : ""}`, detail: `${months} mois` };
+}

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AUTH_COOKIE, authEnabled, expectedToken } from "@/lib/auth";
-import type { Diaper, Feeding } from "@/lib/types";
+import type { Baby, Diaper, Feeding } from "@/lib/types";
 
 async function requireAuth() {
   if (!authEnabled()) return;
@@ -206,5 +206,32 @@ export async function fetchLatest() {
       lastFeeding: check(f) as Feeding | null,
       lastPoo: (check(p) as { occurred_at: string } | null)?.occurred_at ?? null,
     };
+  });
+}
+
+// ---------- Bébé ----------
+export async function fetchBaby() {
+  return safe(async () => {
+    await requireAuth();
+    const res = await supabase().from("baby").select("name,born_at").eq("id", 1).maybeSingle();
+    // Table pas encore créée : on ne bloque pas l'app
+    if (res.error && /baby|schema cache|does not exist/i.test(res.error.message)) return null;
+    return check(res) as Baby | null;
+  });
+}
+
+export async function updateBaby(input: { name: string; born_at: string | null }) {
+  return safe(async () => {
+    await requireAuth();
+    const res = await supabase().from("baby").upsert({
+      id: 1,
+      name: input.name.trim() || null,
+      born_at: input.born_at ? isoOrThrow(input.born_at) : null,
+      updated_at: new Date().toISOString(),
+    });
+    if (res.error && /baby|schema cache|does not exist/i.test(res.error.message)) {
+      throw new Error("Table « baby » absente → exécute supabase/migrations/002_baby.sql dans le SQL Editor de Supabase.");
+    }
+    check(res);
   });
 }

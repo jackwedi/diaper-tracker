@@ -32,3 +32,13 @@ create unique index if not exists feedings_one_active_idx on public.feedings ((t
 -- L'app passe uniquement par le serveur Next.js avec la clé service_role.
 alter table public.diapers  enable row level security;
 alter table public.feedings enable row level security;
+
+-- Infos du bébé (une seule ligne, id = 1)
+create table if not exists public.baby (
+  id         smallint primary key default 1 check (id = 1),
+  name       text,
+  born_at    timestamptz,
+  updated_at timestamptz not null default now()
+);
+insert into public.baby (id) values (1) on conflict (id) do nothing;
+alter table public.baby enable row level security;

@@ -262,3 +262,25 @@ dialog h3 { margin-bottom: 14px; }
 .last-hint { font-size: .8rem; color: var(--muted); margin-top: 2px; }
 .last-hint strong { color: var(--text); }
 @media (max-width: 420px) { .last-big { font-size: 1.3rem; } .last-card { padding: 12px; } }
+
+/* ---------- Sous-onglets du journal ---------- */
+.subtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.subtabs button { border: 2px solid var(--border); background: var(--bg); font-weight: 600; padding: 8px 10px; }
+.subtabs button.diaper.on { border-color: var(--pee); background: var(--pee-soft); }
+.subtabs button.feeding.on { border-color: var(--feed); background: var(--feed-soft); }
+.subtabs .count { display: inline-block; min-width: 22px; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: .78rem; background: var(--card); border: 1px solid var(--border); }
+
+/* ---------- Âge du bébé ---------- */
+.baby-card {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: var(--shadow);
+}
+.baby-card.empty { grid-template-columns: 1fr auto; font-size: .9rem; }
+.baby-emoji { font-size: 2rem; line-height: 1; }
+.baby-info { display: grid; gap: 1px; min-width: 0; }
+.baby-name { font-size: .82rem; font-weight: 600; color: var(--muted); }
+.baby-age { font-size: 1.45rem; font-weight: 800; line-height: 1.15; }
+.baby-detail { font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }

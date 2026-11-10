@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchLatest, fetchRange,
+  addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchBaby, fetchLatest, fetchRange, updateBaby,
   logout, startFeeding, stopFeeding, updateDiaper, updateFeeding,
 } from "@/app/actions";
 import { unwrap } from "@/lib/unwrap";
 import WeeklyData from "@/components/WeeklyData";
-import type { Diaper, Feeding } from "@/lib/types";
+import type { Baby, Diaper, Feeding } from "@/lib/types";
 import {
-  addMonths, dayKey, formatClock, formatDuration, formatTime, gridDays, gridStart,
+  addMonths, dayKey, formatAge, formatClock, formatDuration, formatTime, gridDays, gridStart,
   localInputToIso, parseDayKey, startOfMonth, timeAgo, toLocalInput,
 } from "@/lib/dates";
 
@@ -43,16 +43,21 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const [editing, setEditing] = useState<Editing>(null);
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<"track" | "data">("track");
+  const [baby, setBaby] = useState<Baby | null>(null);
+  const [editingBaby, setEditingBaby] = useState(false);
+  const [journalTab, setJournalTab] = useState<"diaper" | "feeding">("diaper");
 
   // ----- Chargement -----
   const load = useCallback(async () => {
     const start = gridStart(month);
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 42);
     try {
-      const [range, last] = await Promise.all([
+      const [range, last, b] = await Promise.all([
         unwrap(fetchRange(start.toISOString(), end.toISOString())),
         unwrap(fetchLatest()),
+        unwrap(fetchBaby()),
       ]);
+      setBaby(b);
       setDiapers(range.diapers);
       setFeedings(range.feedings);
       setActive(range.active);
@@ -123,6 +128,8 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
     return c;
   }, [diapers, selected]);
 
+  const journalEntries = day?.entries.filter((e) => e.kind === journalTab) ?? [];
+
   const today = dayKey(new Date(now));
   const selectedDate = parseDayKey(selected);
   const selectedLabel = selected === today
@@ -162,6 +169,9 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
         )}
 
         {tab === "data" ? <WeeklyData onError={setError} /> : (<>
+        {/* ===== ÂGE ===== */}
+        {loaded && <BabyCard baby={baby} now={now} onEdit={() => setEditingBaby(true)} />}
+
         {/* ===== DERNIÈRES ===== */}
         <LastEvents latest={latest} active={active} now={now} loaded={loaded} />
 
@@ -225,13 +235,21 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
 
             <div className="day-detail">
               <h3>Journal · {selectedLabel}</h3>
+              <div className="subtabs" role="tablist" aria-label="Type d'entrée">
+                {([["diaper", "🧷 Couches", dayDiapers], ["feeding", "🍼 Tétées", day?.feeds ?? 0]] as const).map(([k, label, n]) => (
+                  <button key={k} role="tab" aria-selected={journalTab === k}
+                    className={`${k} ${journalTab === k ? "on" : ""}`} onClick={() => setJournalTab(k)}>
+                    {label} <span className="count">{n}</span>
+                  </button>
+                ))}
+              </div>
               {!loaded ? (
                 <p className="muted">Chargement…</p>
-              ) : !day?.entries.length ? (
-                <p className="muted">Rien d&apos;enregistré ce jour-là.</p>
+              ) : !journalEntries.length ? (
+                <p className="muted">{journalTab === "diaper" ? "Aucune couche" : "Aucune tétée"} ce jour-là.</p>
               ) : (
                 <ul className="entries">
-                  {day.entries.map((e) => (
+                  {journalEntries.map((e) => (
                     <li key={e.item.id} className={`entry ${e.kind}`}>
                       <span className="time">{formatTime(e.at)}</span>
                       <span className="what">
@@ -269,6 +287,14 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
         </>)}
       </main>
 
+      {editingBaby && (
+        <BabyDialog
+          baby={baby}
+          onClose={() => setEditingBaby(false)}
+          onSave={(v) => { setEditingBaby(false); run(() => updateBaby(v)); }}
+        />
+      )}
+
       {editing && (
         <EditDialog
           editing={editing}
@@ -287,6 +313,64 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
 }
 
 // ======================================================================
+
+function BabyCard({ baby, now, onEdit }: { baby: Baby | null; now: number; onEdit: () => void }) {
+  const name = baby?.name || "Bébé";
+  if (!baby?.born_at) {
+    return (
+      <section className="baby-card empty">
+        <span>👶 Ajoute la date de naissance pour suivre l&apos;âge de {name.toLowerCase() === "bébé" ? "bébé" : name}.</span>
+        <button className="ghost small" onClick={onEdit}>Ajouter</button>
+      </section>
+    );
+  }
+  const age = formatAge(baby.born_at, now);
+  const born = new Date(baby.born_at);
+  return (
+    <section className="baby-card">
+      <span className="baby-emoji" aria-hidden>👶</span>
+      <div className="baby-info">
+        <span className="baby-name">{name}</span>
+        <span className="baby-age">{age.main}</span>
+        <span className="baby-detail">
+          {age.detail && <>{age.detail} · </>}
+          naissance le {born.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} à {formatTime(baby.born_at)}
+        </span>
+      </div>
+      <button className="icon small" aria-label="Modifier la naissance" onClick={onEdit}>✎</button>
+    </section>
+  );
+}
+
+function BabyDialog({ baby, onClose, onSave }: {
+  baby: Baby | null;
+  onClose: () => void;
+  onSave: (v: { name: string; born_at: string | null }) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [name, setName] = useState(baby?.name ?? "");
+  const [born, setBorn] = useState(baby?.born_at ? toLocalInput(new Date(baby.born_at)) : "");
+  useEffect(() => { ref.current?.showModal(); }, []);
+  return (
+    <dialog ref={ref} onClose={onClose} onCancel={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); onSave({ name, born_at: born ? localInputToIso(born) : null }); }}>
+        <h3>Bébé</h3>
+        <label className="field">
+          <span>Prénom (optionnel)</span>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Bébé" />
+        </label>
+        <label className="field">
+          <span>Date & heure de naissance</span>
+          <input type="datetime-local" value={born} required onChange={(e) => setBorn(e.target.value)} />
+        </label>
+        <div className="row end">
+          <button type="button" className="ghost" onClick={onClose}>Annuler</button>
+          <button type="submit" className="primary">Enregistrer</button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
 
 function LastEvents({ latest, active, now, loaded }: {
   latest: { lastDiaper: Diaper | null; lastFeeding: Feeding | null; lastPoo: string | null } | null;
