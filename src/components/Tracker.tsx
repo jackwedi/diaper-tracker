@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchBaby, fetchLatest, fetchRange, updateBaby,
   logout, startFeeding, stopFeeding, updateDiaper, updateFeeding,
@@ -45,7 +45,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const [tab, setTab] = useState<"track" | "data">("track");
   const [baby, setBaby] = useState<Baby | null>(null);
   const [editingBaby, setEditingBaby] = useState(false);
-  const [journalTab, setJournalTab] = useState<"diaper" | "feeding">("diaper");
+  const [journalTab, setJournalTab] = useState<"diaper" | "feeding">("feeding");
 
   // ----- Chargement -----
   const load = useCallback(async () => {
@@ -129,6 +129,21 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   }, [diapers, selected]);
 
   const journalEntries = day?.entries.filter((e) => e.kind === journalTab) ?? [];
+
+  // Écart avec l'entrée précédente du même type (tétée : de début à début ; y compris la veille)
+  const gaps = useMemo(() => {
+    const map = new Map<string, number>();
+    const fill = (items: { id: string; at: string }[]) => {
+      const sorted = [...items].sort((a, b) => a.at.localeCompare(b.at));
+      for (let i = 1; i < sorted.length; i++) {
+        const sec = Math.round((new Date(sorted[i].at).getTime() - new Date(sorted[i - 1].at).getTime()) / 1000);
+        if (sec > 0) map.set(sorted[i].id, sec);
+      }
+    };
+    fill(feedings.map((f) => ({ id: f.id, at: f.started_at })));
+    fill(diapers.map((d) => ({ id: d.id, at: d.occurred_at })));
+    return map;
+  }, [feedings, diapers]);
 
   const today = dayKey(new Date(now));
   const selectedDate = parseDayKey(selected);
@@ -236,7 +251,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
             <div className="day-detail">
               <h3>Journal · {selectedLabel}</h3>
               <div className="subtabs" role="tablist" aria-label="Type d'entrée">
-                {([["diaper", "🧷 Couches", dayDiapers], ["feeding", "🍼 Tétées", day?.feeds ?? 0]] as const).map(([k, label, n]) => (
+                {([["feeding", "🍼 Tétées", day?.feeds ?? 0], ["diaper", "🧷 Couches", dayDiapers]] as const).map(([k, label, n]) => (
                   <button key={k} role="tab" aria-selected={journalTab === k}
                     className={`${k} ${journalTab === k ? "on" : ""}`} onClick={() => setJournalTab(k)}>
                     {label} <span className="count">{n}</span>
@@ -249,8 +264,11 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
                 <p className="muted">{journalTab === "diaper" ? "Aucune couche" : "Aucune tétée"} ce jour-là.</p>
               ) : (
                 <ul className="entries">
-                  {journalEntries.map((e) => (
-                    <li key={e.item.id} className={`entry ${e.kind}`}>
+                  {journalEntries.map((e) => {
+                    const gap = gaps.get(e.item.id);
+                    return (
+                    <Fragment key={e.item.id}>
+                    <li className={`entry ${e.kind}`}>
                       <span className="time">{formatTime(e.at)}</span>
                       <span className="what">
                         {e.kind === "diaper" ? <DiaperLabel d={e.item} /> : <FeedingLabel f={e.item} />}
@@ -265,7 +283,14 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
                           }}>🗑</button>
                       </span>
                     </li>
-                  ))}
+                    {gap !== undefined && (
+                      <li className={`entry-gap ${e.kind}`} aria-label="Temps écoulé depuis l'entrée précédente">
+                        ↕ {formatDuration(gap)} depuis la précédente
+                      </li>
+                    )}
+                    </Fragment>
+                    );
+                  })}
                 </ul>
               )}
             </div>
