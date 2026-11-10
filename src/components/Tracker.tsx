@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchLatest, fetchRange,
-  logout, startFeeding, stopFeeding, updateDiaperTime, updateFeeding,
+  logout, startFeeding, stopFeeding, updateDiaperTime, updateFeeding, type Result,
 } from "@/app/actions";
 import type { Diaper, Feeding } from "@/lib/types";
 import {
@@ -15,6 +15,15 @@ type Side = "G" | "D" | null;
 const LEVELS = { 1: "Faible", 2: "Moyen", 3: "Abondant" } as const;
 const SIDES = { G: "Gauche", D: "Droit" } as const;
 const POLL_MS = 30_000;
+
+async function unwrap<T>(p: Promise<Result<T>>): Promise<T> {
+  const r = await p;
+  if (!r.ok) throw new Error(r.error);
+  return r.data;
+}
+
+const isFailure = (r: unknown): r is { ok: false; error: string } =>
+  typeof r === "object" && r !== null && "ok" in r && r.ok === false;
 
 type Entry =
   | { kind: "diaper"; at: string; item: Diaper }
@@ -31,7 +40,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const [diapers, setDiapers] = useState<Diaper[]>([]);
   const [feedings, setFeedings] = useState<Feeding[]>([]);
   const [active, setActive] = useState<Feeding | null>(null);
-  const [latest, setLatest] = useState<Awaited<ReturnType<typeof fetchLatest>> | null>(null);
+  const [latest, setLatest] = useState<{ lastDiaper: string | null; lastFeeding: { started_at: string; side: Side } | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -44,8 +53,8 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 42);
     try {
       const [range, last] = await Promise.all([
-        fetchRange(start.toISOString(), end.toISOString()),
-        fetchLatest(),
+        unwrap(fetchRange(start.toISOString(), end.toISOString())),
+        unwrap(fetchLatest()),
       ]);
       setDiapers(range.diapers);
       setFeedings(range.feedings);
@@ -77,7 +86,8 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => {
       try {
-        await fn();
+        const r = await fn();
+        if (isFailure(r)) throw new Error(r.error);
         await load();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erreur");
@@ -253,7 +263,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
             active={active}
             now={now}
             pending={pending}
-            onStart={(side) => run(async () => setActive(await startFeeding(side)))}
+            onStart={(side) => run(async () => setActive(await unwrap(startFeeding(side))))}
             onStop={() => active && run(() => stopFeeding(active.id))}
             onCancel={() => active && confirm("Annuler la tétée en cours sans l'enregistrer ?") && run(() => deleteFeeding(active.id))}
             onManual={(input) => run(() => addFeedingManual(input))}
