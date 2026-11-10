@@ -1,34 +1,42 @@
 :root {
-  --bg: #f6f3ff;
-  --card: #ffffff;
-  --text: #1f1b2e;
-  --muted: #6e6886;
-  --border: #e6e1f3;
-  --primary: #6c4cf1;
-  --primary-ink: #ffffff;
-  --danger: #e2445c;
-  --pee: #f2b705;
-  --pee-soft: #fff6d6;
-  --poo: #9a6233;
-  --poo-soft: #f4e8dc;
-  --feed: #2b9a8f;
-  --feed-soft: #dcf3f0;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgba(31, 27, 46, .05), 0 4px 16px rgba(31, 27, 46, .05);
+  /* Palette « beige mom » : crème, sable, caramel, sauge */
+  --bg: #f5efe6;
+  --card: #fffbf5;
+  --text: #3b3029;
+  --muted: #76685b;
+  --border: #e7dccd;
+  --primary: #8f6046;       /* caramel / terracotta doux */
+  --primary-ink: #fffaf3;
+  --danger: #b85a4e;
+  --pee: #d6ad5c;           /* miel */
+  --pee-ink: #4a3714;
+  --pee-soft: #f6ecd6;
+  --poo: #8b6446;           /* noisette */
+  --poo-soft: #eee2d4;
+  --feed: #6c8366;          /* sauge */
+  --feed-soft: #e5ebdf;
+  --radius: 18px;
+  --shadow: 0 1px 2px rgba(80, 60, 40, .05), 0 6px 20px rgba(80, 60, 40, .06);
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-title: var(--font-fraunces), Georgia, "Times New Roman", serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14121c;
-    --card: #1e1b29;
-    --text: #ece9f6;
-    --muted: #9c96b5;
-    --border: #2e2a3d;
-    --primary: #8b72ff;
-    --pee-soft: #3a3214;
-    --poo-soft: #33261b;
-    --feed-soft: #163430;
-    --poo: #c88c58;
+    --bg: #1d1814;
+    --card: #28211c;
+    --text: #f1e7dc;
+    --muted: #b3a291;
+    --border: #3b3129;
+    --primary: #d2a184;
+    --primary-ink: #2a1d15;
+    --danger: #e08376;
+    --pee: #d9b267;
+    --pee-soft: #3a301c;
+    --poo: #c39672;
+    --poo-soft: #362a20;
+    --feed: #9fb59a;
+    --feed-soft: #26302a;
     --shadow: none;
   }
 }
@@ -38,7 +46,7 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
@@ -143,7 +151,7 @@ form > .primary { width: 100%; padding: 12px; }
 .cal-day .num { font-size: .85rem; font-weight: 600; }
 .counts { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
 .c { font-size: .65rem; font-weight: 700; min-width: 16px; padding: 0 3px; border-radius: 6px; color: #fff; line-height: 15px; }
-.c.pee { background: var(--pee); color: #3a2c00; }
+.c.pee { background: var(--pee); color: var(--pee-ink); }
 .c.poo { background: var(--poo); }
 .c.feed { background: var(--feed); }
 .cal-legend { display: flex; gap: 14px; justify-content: center; margin-top: 10px; font-size: .78rem; color: var(--muted); }
@@ -201,7 +209,7 @@ dialog {
   background: var(--card); color: var(--text);
   padding: 20px; width: min(420px, calc(100vw - 32px));
 }
-dialog::backdrop { background: rgba(0, 0, 0, .4); }
+dialog::backdrop { background: rgba(59, 48, 41, .35); backdrop-filter: blur(2px); }
 dialog h3 { margin-bottom: 14px; }
 
 .login { min-height: 100dvh; display: grid; place-items: center; }
@@ -284,3 +292,26 @@ dialog h3 { margin-bottom: 14px; }
 .baby-name { font-size: .82rem; font-weight: 600; color: var(--muted); }
 .baby-age { font-size: 1.45rem; font-weight: 800; line-height: 1.15; }
 .baby-detail { font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* ---------- Thème beige : titres serif, formes douces ---------- */
+h1, h2, h3, .baby-age, .last-big, .stat-value, .timer, .cal-head span, .week-title h2 {
+  font-family: var(--font-title);
+  font-optical-sizing: auto;
+}
+h1 { font-weight: 600; font-size: 1.3rem; letter-spacing: -.01em; }
+h2 { font-weight: 600; font-size: 1.15rem; }
+h3 { font-weight: 600; }
+.baby-age, .last-big { font-weight: 600; letter-spacing: -.01em; }
+.stat-value { font-weight: 600; }
+.timer { font-weight: 500; letter-spacing: 0; }
+button { border-radius: 12px; }
+.primary { box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent); }
+.tabs { border-radius: 999px; padding: 4px; }
+.tabs button { border-radius: 999px; }
+.tabs button.on { box-shadow: 0 2px 6px color-mix(in srgb, var(--primary) 30%, transparent); }
+.cal-day { border-radius: 12px; }
+.cal-day.today .num { border-radius: 999px; }
+.tag { border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.baby-card { background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--card)), var(--card)); }
+.c.poo, .c.feed { color: var(--card); }
+.stat { align-content: start; }
