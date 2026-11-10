@@ -108,10 +108,19 @@ export async function addDiaper(input: {
   });
 }
 
-export async function updateDiaperTime(id: string, occurred_at: string) {
+export async function updateDiaper(id: string, input: {
+  occurred_at: string; pee: boolean; poo: boolean; poo_level: number | null;
+}) {
   return safe(async () => {
     await requireAuth();
-    check(await supabase().from("diapers").update({ occurred_at: isoOrThrow(occurred_at) }).eq("id", id));
+    if (!input.pee && !input.poo) throw new Error("Coche au moins Urine ou Caca");
+    const level = input.poo && input.poo_level ? Math.min(3, Math.max(1, Number(input.poo_level))) : null;
+    check(await supabase().from("diapers").update({
+      occurred_at: isoOrThrow(input.occurred_at),
+      pee: input.pee,
+      poo: input.poo,
+      poo_level: level,
+    }).eq("id", id));
   });
 }
 
@@ -159,7 +168,7 @@ export async function addFeedingManual(input: { started_at: string; minutes: num
   });
 }
 
-export async function updateFeeding(id: string, started_at: string, minutes: number) {
+export async function updateFeeding(id: string, started_at: string, minutes: number, side: "G" | "D" | null) {
   return safe(async () => {
     await requireAuth();
     const start = new Date(isoOrThrow(started_at));
@@ -168,6 +177,7 @@ export async function updateFeeding(id: string, started_at: string, minutes: num
       started_at: start.toISOString(),
       ended_at: new Date(start.getTime() + seconds * 1000).toISOString(),
       duration_seconds: seconds,
+      side: side === "G" || side === "D" ? side : null,
     }).eq("id", id));
   });
 }

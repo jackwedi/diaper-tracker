@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   addDiaper, addFeedingManual, deleteDiaper, deleteFeeding, fetchLatest, fetchRange,
-  logout, startFeeding, stopFeeding, updateDiaperTime, updateFeeding,
+  logout, startFeeding, stopFeeding, updateDiaper, updateFeeding,
 } from "@/app/actions";
 import { unwrap } from "@/lib/unwrap";
 import WeeklyData from "@/components/WeeklyData";
@@ -280,12 +280,12 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
         <EditDialog
           editing={editing}
           onClose={() => setEditing(null)}
-          onSave={(time, minutes) => {
+          onSave={(v) => {
             const target = editing;
             setEditing(null);
             run(() => target.kind === "diaper"
-              ? updateDiaperTime(target.item.id, time)
-              : updateFeeding(target.item.id, time, minutes));
+              ? updateDiaper(target.item.id, { occurred_at: v.time, pee: v.pee, poo: v.poo, poo_level: v.level })
+              : updateFeeding(target.item.id, v.time, v.minutes, v.side));
           }}
         />
       )}
@@ -467,29 +467,69 @@ function FeedingPanel({ active, now, pending, onStart, onStop, onCancel, onManua
 function EditDialog({ editing, onClose, onSave }: {
   editing: NonNullable<Editing>;
   onClose: () => void;
-  onSave: (timeIso: string, minutes: number) => void;
+  onSave: (v: { time: string; minutes: number; side: Side; pee: boolean; poo: boolean; level: 1 | 2 | 3 | null }) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const initialIso = editing.kind === "diaper" ? editing.item.occurred_at : editing.item.started_at;
   const [time, setTime] = useState(() => toLocalInput(new Date(initialIso)));
   const [minutes, setMinutes] = useState(() =>
     editing.kind === "feeding" ? Math.max(1, Math.round((editing.item.duration_seconds ?? 60) / 60)) : 0);
+  const [side, setSide] = useState<Side>(() => (editing.kind === "feeding" ? editing.item.side : null));
+  const [pee, setPee] = useState(() => (editing.kind === "diaper" ? editing.item.pee : false));
+  const [poo, setPoo] = useState(() => (editing.kind === "diaper" ? editing.item.poo : false));
+  const [level, setLevel] = useState<1 | 2 | 3 | null>(() => (editing.kind === "diaper" ? editing.item.poo_level : null));
+  const [err, setErr] = useState(false);
 
   useEffect(() => { ref.current?.showModal(); }, []);
 
   return (
     <dialog ref={ref} onClose={onClose} onCancel={onClose}>
-      <form onSubmit={(e) => { e.preventDefault(); onSave(localInputToIso(time), minutes); }}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        if (editing.kind === "diaper" && !pee && !poo) { setErr(true); return; }
+        onSave({ time: localInputToIso(time), minutes, side, pee, poo, level: poo ? level : null });
+      }}>
         <h3>Modifier {editing.kind === "diaper" ? "la couche" : "la tétée"}</h3>
         <label className="field">
           <span>{editing.kind === "diaper" ? "Date & heure" : "Début"}</span>
           <input type="datetime-local" value={time} required onChange={(e) => setTime(e.target.value)} />
         </label>
+        {editing.kind === "diaper" && (
+          <>
+            <div className="toggles">
+              <button type="button" className={`toggle pee ${pee ? "on" : ""}`} aria-pressed={pee}
+                onClick={() => { setPee(!pee); setErr(false); }}>💧 Urine</button>
+              <button type="button" className={`toggle poo ${poo ? "on" : ""}`} aria-pressed={poo}
+                onClick={() => { setPoo(!poo); setErr(false); }}>💩 Caca</button>
+            </div>
+            <fieldset className="levels levels-4" disabled={!poo}>
+              <legend>Intensité du caca</legend>
+              {([1, 2, 3, null] as const).map((l) => (
+                <label key={String(l)} className={level === l ? "on" : ""}>
+                  <input type="radio" name="edit-level" checked={level === l} onChange={() => setLevel(l)} />
+                  <span>{l ? LEVELS[l] : "—"}</span>
+                </label>
+              ))}
+            </fieldset>
+            {err && <p className="error">Coche au moins Urine ou Caca.</p>}
+          </>
+        )}
         {editing.kind === "feeding" && (
           <label className="field">
             <span>Durée (minutes)</span>
             <input type="number" min={1} max={240} value={minutes} required onChange={(e) => setMinutes(Number(e.target.value))} />
           </label>
+        )}
+        {editing.kind === "feeding" && (
+          <div className="field">
+            <span>Sein</span>
+            <div className="side-picker" role="radiogroup" aria-label="Sein">
+              {([["G", "Gauche"], ["D", "Droit"], [null, "—"]] as const).map(([v, label]) => (
+                <button key={label} type="button" role="radio" aria-checked={side === v}
+                  className={side === v ? "on" : ""} onClick={() => setSide(v)}>{label}</button>
+              ))}
+            </div>
+          </div>
         )}
         <div className="row end">
           <button type="button" className="ghost" onClick={onClose}>Annuler</button>
