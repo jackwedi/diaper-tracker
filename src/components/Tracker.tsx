@@ -269,7 +269,10 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
                     return (
                     <Fragment key={e.item.id}>
                     <li className={`entry ${e.kind}`}>
-                      <span className="time">{formatTime(e.at)}</span>
+                      <span className="time">
+                        {formatTime(e.at)}
+                        {e.kind === "feeding" && e.item.ended_at && <span className="time-end">→ {formatTime(e.item.ended_at)}</span>}
+                      </span>
                       <span className="what">
                         {e.kind === "diaper" ? <DiaperLabel d={e.item} /> : <FeedingLabel f={e.item} />}
                       </span>
@@ -421,10 +424,13 @@ function LastEvents({ latest, active, now, loaded }: {
           <>
             <span className="last-big">{timeAgo(f.started_at, now)}</span>
             <span className="last-sub">
-              à {formatTime(f.started_at)}
+              {formatTime(f.started_at)}{f.ended_at && ` → ${formatTime(f.ended_at)}`}
               {f.duration_seconds != null && ` · ${formatDuration(f.duration_seconds)}`}
               {f.side && ` · ${SIDES[f.side]}`}
             </span>
+            {f.ended_at && (
+              <span className="last-sub">fin {timeAgo(f.ended_at, now)}</span>
+            )}
             {nextSide && <span className="last-hint">Prochain sein : <strong>{nextSide}</strong></span>}
           </>
         ) : (
