@@ -36,7 +36,7 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
   const [diapers, setDiapers] = useState<Diaper[]>([]);
   const [feedings, setFeedings] = useState<Feeding[]>([]);
   const [active, setActive] = useState<Feeding | null>(null);
-  const [latest, setLatest] = useState<{ lastDiaper: string | null; lastFeeding: { started_at: string; side: Side } | null } | null>(null);
+  const [latest, setLatest] = useState<{ lastDiaper: Diaper | null; lastFeeding: Feeding | null; lastPoo: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -162,20 +162,13 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
         )}
 
         {tab === "data" ? <WeeklyData onError={setError} /> : (<>
+        {/* ===== DERNIÈRES ===== */}
+        <LastEvents latest={latest} active={active} now={now} loaded={loaded} />
+
         {/* ===== RÉCAP ===== */}
         <section className="card recap">
           <div className="recap-head">
             <h2>Récap · <span className="muted">{selectedLabel}</span></h2>
-            {latest && (
-              <p className="muted latest">
-                {latest.lastDiaper && <>Dernière couche {timeAgo(latest.lastDiaper, now)}</>}
-                {latest.lastDiaper && latest.lastFeeding && " · "}
-                {latest.lastFeeding && (
-                  <>Dernière tétée {timeAgo(latest.lastFeeding.started_at, now)}
-                    {latest.lastFeeding.side && ` (${SIDES[latest.lastFeeding.side]})`}</>
-                )}
-              </p>
-            )}
           </div>
 
           <div className="stats">
@@ -294,6 +287,61 @@ export default function Tracker({ canLogout }: { canLogout: boolean }) {
 }
 
 // ======================================================================
+
+function LastEvents({ latest, active, now, loaded }: {
+  latest: { lastDiaper: Diaper | null; lastFeeding: Feeding | null; lastPoo: string | null } | null;
+  active: Feeding | null;
+  now: number;
+  loaded: boolean;
+}) {
+  const f = latest?.lastFeeding ?? null;
+  const d = latest?.lastDiaper ?? null;
+  const nextSide = f?.side === "G" ? "Droit" : f?.side === "D" ? "Gauche" : null;
+  const elapsed = active ? Math.max(0, Math.floor((now - new Date(active.started_at).getTime()) / 1000)) : 0;
+
+  return (
+    <section className="last-events" aria-label="Derniers événements">
+      <div className={`last-card feed ${active ? "running" : ""}`}>
+        <span className="last-label">🍼 {active ? "Tétée en cours" : "Dernière tétée"}</span>
+        {active ? (
+          <>
+            <span className="last-big">{formatClock(elapsed)}</span>
+            <span className="last-sub">depuis {formatTime(active.started_at)}{active.side ? ` · ${SIDES[active.side]}` : ""}</span>
+          </>
+        ) : f ? (
+          <>
+            <span className="last-big">{timeAgo(f.started_at, now)}</span>
+            <span className="last-sub">
+              à {formatTime(f.started_at)}
+              {f.duration_seconds != null && ` · ${formatDuration(f.duration_seconds)}`}
+              {f.side && ` · ${SIDES[f.side]}`}
+            </span>
+            {nextSide && <span className="last-hint">Prochain sein : <strong>{nextSide}</strong></span>}
+          </>
+        ) : (
+          <span className="last-big muted">{loaded ? "—" : "…"}</span>
+        )}
+      </div>
+
+      <div className="last-card diaper">
+        <span className="last-label">🧷 Dernière couche</span>
+        {d ? (
+          <>
+            <span className="last-big">{timeAgo(d.occurred_at, now)}</span>
+            <span className="last-sub">
+              à {formatTime(d.occurred_at)} · {[d.pee && "💧 Urine", d.poo && `💩 Caca${d.poo_level ? ` ${LEVELS[d.poo_level].toLowerCase()}` : ""}`].filter(Boolean).join(" + ")}
+            </span>
+            {latest?.lastPoo && !d.poo && (
+              <span className="last-hint">Dernier caca : <strong>{timeAgo(latest.lastPoo, now)}</strong></span>
+            )}
+          </>
+        ) : (
+          <span className="last-big muted">{loaded ? "—" : "…"}</span>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function Stat({ label, value, sub, tone }: { label: string; value: number | string; sub?: string; tone?: string }) {
   return (

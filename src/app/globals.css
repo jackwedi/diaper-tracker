@@ -243,3 +243,22 @@ dialog h3 { margin-bottom: 14px; }
 .stat-value { display: flex; align-items: baseline; flex-wrap: wrap; }
 .levels.levels-4 { grid-template-columns: repeat(3, 1fr) auto; }
 .levels.levels-4 label:last-child { padding-inline: 14px; }
+
+/* ---------- Dernière tétée / couche ---------- */
+.last-events { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .last-events { gap: 8px; } }
+.last-card {
+  display: grid; align-content: start; gap: 4px; min-width: 0;
+  padding: 14px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.last-card.feed { background: var(--feed-soft); border-color: color-mix(in srgb, var(--feed) 35%, transparent); }
+.last-card.diaper { background: var(--pee-soft); border-color: color-mix(in srgb, var(--pee) 45%, transparent); }
+.last-card.running { box-shadow: 0 0 0 2px var(--feed); }
+.last-label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+.last-big { font-size: 1.6rem; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.last-card.running .last-big { color: var(--feed); }
+.last-sub { font-size: .85rem; overflow-wrap: anywhere; }
+.last-hint { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.last-hint strong { color: var(--text); }
+@media (max-width: 420px) { .last-big { font-size: 1.3rem; } .last-card { padding: 12px; } }

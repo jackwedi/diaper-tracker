@@ -193,14 +193,18 @@ export async function fetchLatest() {
   return safe(async () => {
     await requireAuth();
     const db = supabase();
-    const [d, f] = await Promise.all([
-      db.from("diapers").select("occurred_at").order("occurred_at", { ascending: false }).limit(1).maybeSingle(),
-      db.from("feedings").select("started_at,side").not("ended_at", "is", null)
+    const [d, f, p] = await Promise.all([
+      db.from("diapers").select("id,occurred_at,pee,poo,poo_level,note")
+        .order("occurred_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("feedings").select("id,started_at,ended_at,duration_seconds,side").not("ended_at", "is", null)
         .order("started_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("diapers").select("occurred_at").eq("poo", true)
+        .order("occurred_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     return {
-      lastDiaper: (check(d) as { occurred_at: string } | null)?.occurred_at ?? null,
-      lastFeeding: check(f) as { started_at: string; side: "G" | "D" | null } | null,
+      lastDiaper: check(d) as Diaper | null,
+      lastFeeding: check(f) as Feeding | null,
+      lastPoo: (check(p) as { occurred_at: string } | null)?.occurred_at ?? null,
     };
   });
 }
